@@ -1,90 +1,104 @@
+import Layout from '../components/Layout';
+import Banner from '../components/Banner';
+import ChannelGrid from '../components/ChannelGrid';
+import PodcastListWithClick from '../components/PodcastListWithClick';
+import PodcastPlayer from '../components/PodcastPlayer';
+import Error from './_error';
+
 export default class extends React.Component {
-  static async getInitialProps({ query }) {
-    let idChannel = query.id;
-
-    let reqChannel = await fetch(
-      `http://api.audioboom.com/channels/${idChannel}`
-    );
-    let dataChannel = await reqChannel.json();
-    let channel = dataChannel.body.channel;
-
-    let reqAudios = await fetch(
-      `http://api.audioboom.com/channels/${idChannel}/audio_clips`
-    );
-    let dataAudios = await reqAudios.json();
-    let audioClips = dataAudios.body.audio_clips;
-
-    let reqSeries = await fetch(
-      `http://api.audioboom.com/channels/${idChannel}/child_channels`
-    );
-    let dataSeries = await reqSeries.json();
-    let series = dataSeries.body.channels;
-
-    return { channel, audioClips, series };
+  constructor(props) {
+    super(props);
+    this.state = { openPodcast: null };
   }
 
+  static async getInitialProps({ query, res }) {
+    try {
+      let idChannel = query.id;
+
+      let [reqChannel, reqSeries, reqAudios] = await Promise.all([
+        fetch(`http://api.audioboom.com/channels/${idChannel}`),
+        fetch(`http://api.audioboom.com/channels/${idChannel}/child_channels`),
+        fetch(`http://api.audioboom.com/channels/${idChannel}/audio_clips`),
+      ]);
+
+      if (reqChannel.status >= 400) {
+        res.statusCode = 404;
+        return {
+          channel: null,
+          audioClips: null,
+          series: null,
+          statusCode: 404,
+        };
+      }
+
+      let dataChannel = await reqChannel.json();
+      let channel = dataChannel.body.channel;
+
+      let dataAudios = await reqAudios.json();
+      let audioClips = dataAudios.body.audio_clips;
+
+      let dataSeries = await reqSeries.json();
+      let series = dataSeries.body.channels;
+
+      return { channel, audioClips, series, statusCode: 200 };
+    } catch (error) {
+      res.statusCode = 404;
+      return { channel: null, audioClips: null, series: null, statusCode: 404 };
+    }
+  }
+
+  openPodcast = (event, podcast) => {
+    event.preventDefault();
+    this.setState({
+      openPodcast: podcast,
+    });
+  };
+
+  closePodcast = (event) => {
+    event.preventDefault();
+    this.setState({
+      openPodcast: null,
+    });
+  };
+
   render() {
-    const { channel, audioClips, series } = this.props;
+    const { channel, audioClips, series, statusCode } = this.props;
+    const { openPodcast } = this.state;
+
+    //Patron Early Return
+    if (statusCode !== 200) {
+      return <Error statusCode={statusCode} />;
+    }
 
     return (
-      <div>
-        <header>Podcasts</header>
+      <Layout title={`${channel.title}`}>
+        <Banner urlBanner={channel.urls.banner_image.original}></Banner>
+
+        {openPodcast && (
+          <PodcastPlayer clip={openPodcast} onClose={this.closePodcast} />
+        )}
         <h1>{channel.title}</h1>
 
-        <h2>Series</h2>
-        {series.map((serie) => (
-          <div>{serie.title}</div>
-        ))}
+        {series.length > 0 && (
+          <div>
+            <h2>Series</h2>
+            <ChannelGrid channels={series} />
+          </div>
+        )}
 
         <h2>Ultimos Podcasts</h2>
-        {audioClips.map((clip) => (
-          <div>{clip.title}</div>
-        ))}
+        <PodcastListWithClick
+          podcasts={audioClips}
+          onClickPodcast={this.openPodcast}
+        />
 
         <style jsx>{`
-          header {
-            color: #fff;
-            background: #8756ca;
-            padding: 15px;
-            text-align: center;
-          }
-          .channels {
-            display: grid;
-            grid-gap: 15px;
-            padding: 15px;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-          }
-          a.channel {
-            display: block;
-            margin-bottom: 0.5em;
-            color: #333;
-            text-decoration: none;
-          }
-          .channel img {
-            border-radius: 3px;
-            box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.15);
-            width: 100%;
-          }
           h1 {
             font-weight: 600;
             padding: 15px;
           }
-          h2 {
-            padding: 5px;
-            font-size: 0.9em;
-            font-weight: 600;
-            margin: 0;
-            text-align: center;
-          }
         `}</style>
-        <style jsx global>{`
-          body {
-            margin: 0;
-            font-family: system-ui;
-            background: white;
-          }
-        `}</style>
-      </div>
+      </Layout>
     );
   }
 }
