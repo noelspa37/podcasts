@@ -16,9 +16,9 @@ export default class extends React.Component {
       let idChannel = query.id;
 
       let [reqChannel, reqSeries, reqAudios] = await Promise.all([
-        fetch(`http://api.audioboom.com/channels/${idChannel}`),
-        fetch(`http://api.audioboom.com/channels/${idChannel}/child_channels`),
-        fetch(`http://api.audioboom.com/channels/${idChannel}/audio_clips`),
+        fetch(`https://api.audioboom.com/channels/${idChannel}`),
+        fetch(`https://api.audioboom.com/channels/${idChannel}/child_channels`),
+        fetch(`https://api.audioboom.com/channels/${idChannel}/audio_clips`),
       ]);
 
       if (reqChannel.status >= 400) {
