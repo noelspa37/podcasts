@@ -4,6 +4,8 @@ App de Podcasts integrada con la API de AudioBoom para aprender Next.JS
 
 ![Captura de la App](./.readme-static/captura.png)
 
+[Ver la aplicación](https://podcasts-ashy.now.sh)
+
 ## ¿Cómo funciona?
 
 Requiere Node.JS 10
